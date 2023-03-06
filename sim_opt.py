@@ -93,17 +93,21 @@ M = MAPF(n, edges, robots, targets)
 # is the set of nodes where entering them has zero cost.
 # ignore_node is just an optional parameter in case a certain
 # node in the graph should be ignored during the calculation
-def zero_one_bfs(M, starts, zero_nodes, ignore_node=None):
-    relevant_starts = [r for r in starts if r != ignore_node]
-    q = deque(relevant_starts)
+def zero_one_bfs_chrono(M, starts, zero_nodes, ignore_nodes):
+    relevant_starts = [r for r in starts if r not in ignore_nodes]
+    
+    q = deque()
+    for s in relevant_starts:
+        q.append((s, 0, 1))
     N = M.G.number_of_nodes()
     distance = [N for _ in range(N + 1)]
     previous = [-1 for _ in range(N + 1)]
     for r in relevant_starts:
         distance[r] = 0
     while len(q) > 0:
-        cur = q.popleft()
-        if cur == ignore_node:
+        cur, t, prev = q.popleft()
+        print("node:", cur, "time:", t)
+        if (cur, t) in ignore_nodes:
             continue
         for neighbor in M.G.neighbors(cur):
             w = 0 if neighbor in zero_nodes else 1
@@ -111,18 +115,51 @@ def zero_one_bfs(M, starts, zero_nodes, ignore_node=None):
                 distance[neighbor] = distance[cur] + w
                 previous[neighbor] = cur
                 if w == 1:
-                    q.append(neighbor)
+                    q.append((neighbor, t + prev, w))
                 else:
-                    q.appendleft(neighbor)
+                    q.appendleft((neighbor, t + prev, w))
     return distance, previous
-    
+
+
+def zero_one_bfs_new(M, starts, temporary_blockers, time_arrived, current_time):
+    print("NEW BFS")
+    q = deque()
+    for s in starts:
+        q.append((s, current_time, 1))
+    N = M.G.number_of_nodes()
+    distance = [N for _ in range(N + 1)]
+    previous = [-1 for _ in range(N + 1)]
+    for r in starts:
+        distance[r] = 0
+    while len(q) > 0:
+        cur, t, prev = q.popleft()
+        # print("node:", cur, "time:", t)
+        if (cur, t) in temporary_blockers:
+            continue
+        for neighbor in M.G.neighbors(cur):
+            w = 0 if t + prev > time_arrived[neighbor] else 1
+            if distance[cur] + w < distance[neighbor]:
+                distance[neighbor] = distance[cur] + w
+                previous[neighbor] = cur
+                if w == 1:
+                    q.append((neighbor, t + prev, w))
+                else:
+                    q.appendleft((neighbor, t + prev, w))
+    return distance, previous
+
 
 # dones is the list of robots whose trajecory has been calculated, and with respect
 # to calculating the next routes, we can assume they will have arrived
 dones = set([r for r in robots if r in targets])
 # arrived is the list of robots who have actually arrived in their desired position,
 # although they may be pushed around and its target may be swapped in the future
+N = M.G.number_of_nodes()
+time_arrived = [N for i in range(0, N + 1)]
+for d in dones:
+    time_arrived[d] = 0
+
 arrived = dones.copy()
+
 # active_robots and active_targets is the list of robots and targets whose initial
 # trajectory has not yet been determined
 active_robots = set([r for r in robots if r not in dones])
@@ -131,56 +168,63 @@ active_targets = set([t for t in targets if t not in dones])
 ongoing_paths = []
 visualize_state(M)
 time_steps = 0
+blocks_found = []
 while len(arrived) < len(robots): 
-    time_steps += 1
-    found_tie = False
-    if len(active_robots) > 0 and not found_tie:
-        distances, previous = zero_one_bfs(M, active_robots, dones)
-        best_target = next(iter(active_targets))
-        for t in active_targets:
-            if distances[t] < distances[best_target]:
-                best_target = t
-        
-        # find best path
-        best_path = [best_target]
-        current_node = best_target
-        while previous[current_node] != -1:
-            best_path.append(previous[current_node])
-            current_node = previous[current_node]
-        
-        best_distance = distances[best_target]
-        best_robot = best_path[-1]
-        
-        distances, paths = zero_one_bfs(M, active_robots, dones, ignore_node = best_robot)
-        closest_target_distance = M.G.number_of_nodes()
-        for t in active_targets:
-            if distances[t] < closest_target_distance:
-                closest_target_distance = distances[t]
-        
-        # Tie
-        if closest_target_distance == best_distance:
-            found_tie = True
-        ongoing_paths.append(best_path)
-        active_robots.remove(best_robot)
-        active_targets.remove(best_target)
-        dones.add(best_target)
-
-    moves = []
-    updated_paths = []
-    for path in ongoing_paths:
-        while len(path) > 1 and path[-2] in arrived:
+    try:
+        just_added = []
+        shortest_path_yet = 0
+        targets = []
+        while len(active_robots) > 0:
+            distances, previous = zero_one_bfs_new(M, active_robots, blocks_found, time_arrived, time_steps)
+            # print(blocks_found)
+            best_target = next(iter(active_targets))
+            for t in active_targets:
+                if distances[t] < distances[best_target]:
+                    best_target = t
+            if distances[best_target] == N:
+                break
+            # find best path
+            best_path = [best_target]
+            current_node = best_target
+            while previous[current_node] != -1:
+                best_path.append(previous[current_node])
+                current_node = previous[current_node]
+            
+            best_distance = distances[best_target]
+            best_robot = best_path[-1]
+            
+            t_plan = time_steps
+            for v in reversed(best_path):
+                blocks_found.append((v, t_plan))
+                if t_plan <= time_arrived[v]:
+                    t_plan += 1
+            time_arrived[best_target] = t_plan - 1
+            print(blocks_found)
+            print("node:", best_target, ". arrived at:", t_plan - 1)
+            ongoing_paths.append(best_path)
+            active_robots.remove(best_robot)
+            active_targets.remove(best_target)
+            just_added.append(best_target)
+        print(ongoing_paths)
+        moves = []
+        updated_paths = []
+        for path in ongoing_paths:
+            while len(path) > 1 and path[-2] in arrived:
+                moves.append((path[-1], path[-2]))
+                path.pop(-1)
             moves.append((path[-1], path[-2]))
             path.pop(-1)
-        moves.append((path[-1], path[-2]))
-        path.pop(-1)
-        if len(path) == 1:
-            arrived.add(path[-1])
-        else:
-            updated_paths.append(path)
-    ongoing_paths = updated_paths
-    visualize_state(M, moves = moves)
-    M.make_moves(moves)
-    visualize_state(M)
+            if len(path) == 1:
+                arrived.add(path[-1])
+            else:
+                updated_paths.append(path)
+        ongoing_paths = updated_paths
+        visualize_state(M, moves = moves)
+        M.make_moves(moves)
+        visualize_state(M)
+    except:
+        break
+    time_steps += 1
 # ALGORITHM END
 
 # CALCULATING DIAMETER! NOT PART OF THE ALGORITHM
