@@ -4,6 +4,7 @@ import numpy
 import sys
 from collections import deque
 from colorama import init, Fore, Back, Style
+from collections import deque
 from push import push_algorithm
 init()
 numpy.random.seed(4812)
@@ -12,6 +13,7 @@ sys.setrecursionlimit(100000)
 vis_states = []
 vis_idx = 0
 SHOW_VISUALIZATION = True
+NODES_NUMBERED = False
 
 def visualize_state(M, moves=None): # G is a "Graph" instance
     node_colors = ['#aaa'] * M.G.number_of_nodes()
@@ -39,7 +41,7 @@ def onkeypress(event):
 
     if event.key == 'n' or event.key == 'm':
         G, pos, node_color, edge_color = vis_states[vis_idx]
-        nx.draw_networkx(G, pos = pos, node_color = node_color, edge_color = edge_color)
+        nx.draw_networkx(G, pos = pos, node_color = node_color, edge_color = edge_color, with_labels=NODES_NUMBERED)
         event.canvas.draw()
 
 def show_visualization(start_showing_from = 0):
@@ -51,12 +53,8 @@ def show_visualization(start_showing_from = 0):
     
     fig = plt.figure()
     fig.canvas.mpl_connect('key_release_event', onkeypress)
-    nx.draw_networkx(G, pos = pos, node_color = node_color, edge_color = edge_color)
-    
-    plt.show()
-
-    
-
+    nx.draw_networkx(G, pos = pos, node_color = node_color, edge_color = edge_color, with_labels=NODES_NUMBERED)
+    plt.show()    
 
 class MAPF:
     def __init__(self, n_vertices, edge_list, robots, targets):
@@ -84,108 +82,6 @@ class MAPF:
             if self.robots_vis[i] in moves_dict:
                 self.robots_vis[i] = moves_dict[self.robots_vis[i]]
         assert len(set(self.robots_vis)) == old_number_of_robots, "You crashed some robots into each other!" 
-
-with open(f'graphs/{sys.argv[1]}.txt') as f:
-    n, m, k = map(int, f.readline().split())
-    robots = list(map(int, f.readline().split()))
-    targets = list(map(int, f.readline().split()))
-    edges = []
-    for _ in range(m):
-        a, b = map(int, f.readline().split())
-        edges.append((a, b))
-
-
-# tasks
-# - rewrite the simulator so that it just takes in the (t, u, v) type instructions and generates the simulation
-#   - if there is some error, then it reports it, but shows the simulation until the error happens
-# - rewrite push algorithm to output these types of instructions
-
-# PUSH_OPT ALGORITHM STARTS
-
-def zero_one_bfs_chrono(M, starts, ends, temporary_blockers, time_arrived, current_time):
-    q = deque()
-    for s in starts:
-        q.append(s)
-    N = M.G.number_of_nodes()
-    distance = [N for _ in range(N + 1)]
-    previous = [-1 for _ in range(N + 1)]
-    for r in starts:
-        distance[r] = 0
-    while len(q) > 0:
-        cur = q.popleft()
-        t = current_time + distance[cur]
-        if (cur, t) in temporary_blockers:
-            continue
-        if cur in ends:
-            break
-        for neighbor in M.G.neighbors(cur):
-            if t + 1 == time_arrived[neighbor]:
-                continue
-            w = 0 if t + 1 > time_arrived[neighbor] else 1
-            if distance[cur] + w < distance[neighbor]:
-                distance[neighbor] = distance[cur] + w
-                previous[neighbor] = cur
-                if w == 1:
-                    q.append(neighbor)
-                else:
-                    q.appendleft(neighbor)
-    return distance, previous
-
-def push_opt_algorithm(M):
-    # dones is the list of robots whose trajecory has been calculated, and with respect
-    # to calculating the next routes, we can assume they will have arrived
-    dones = set([r for r in M.robots if r in M.targets])
-    N = M.G.number_of_nodes()
-    time_arrived = [N for i in range(0, N + 1)]
-    for d in dones:
-        time_arrived[d] = 0
-    active_robots = set([r for r in M.robots if r not in dones])
-    active_targets = set([t for t in M.targets if t not in dones])
-    time_steps = 0
-    blocks_found = set()
-    answer = []
-    searches = 0
-    while len(active_robots) > 0:
-        while len(active_robots) > 0:
-            distances, previous = zero_one_bfs_chrono(M, active_robots, active_targets, blocks_found, time_arrived, time_steps)
-            searches += 1
-            best_target = next(iter(active_targets))
-            for t in active_targets:
-                if distances[t] < distances[best_target]:
-                    best_target = t
-            if distances[best_target] == N:
-                break
-            # find best path
-            best_path = [best_target]
-            current_node = best_target
-            while previous[current_node] != -1:
-                best_path.append(previous[current_node])
-                current_node = previous[current_node]
-            best_path = list(reversed(best_path))
-            best_distance = distances[best_target]
-            best_robot = best_path[0]
-            t_plan = time_steps
-            for i in range(len(best_path) - 1):
-                u, v = best_path[i:i+2]
-                blocks_found.add((u, t_plan))
-                answer.append((t_plan, u, v))
-                if t_plan < time_arrived[v]:
-                    t_plan += 1
-            time_arrived[best_target] = t_plan
-            active_robots.remove(best_robot)
-            active_targets.remove(best_target)
-            # just_added.append(best_target)
-        time_steps += 1
-    print("Searches:", searches)
-    print("Should be upper bound:", 2 * len(M.robots) - 1)
-    # delete swap conflicts
-    new_instructions = set(answer)
-    for t, u, v in answer:
-        if (t, v, u) in new_instructions:
-            new_instructions.remove((t, v, u))
-    return list(new_instructions)
-# PUSH_OPT ALGORITHM ENDS
-
 
 
 def analyze_solution(M, instructions):
@@ -245,25 +141,46 @@ def analyze_solution(M, instructions):
             except:
                 break
 
-    # paths_list = list(nx.all_pairs_shortest_path(M.G))
-    #ell = 0
-    #for r in M.robots:
-    #    distances, previous = zero_one_bfs(M, [r], [])
-    #    for g in M.targets:
-    #        ell = max(ell, distances[g])
-
+    ell = 0
+    for r in M.robots:
+        q = deque([r])
+        dist = [1e8 for v in range(M.G.number_of_nodes() + 1)]
+        dist[r] = 0
+        while len(q) > 0:
+            cur = q.popleft()
+            for v in M.G.neighbors(cur):
+                if dist[v] == 1e8:
+                    dist[v] = dist[cur] + 1
+                    q.append(v)
+        for g in M.targets:
+            ell = max(ell, dist[g])
+    
     print("Makespan of calculated solution:", makespan)
-    #print("Maximum robot/target distance (ell):", ell)    
-    #print(f"Theoretical upper bound (min(n, V - n) + ell - 1): {min(len(robots), M.G.number_of_nodes() - len(robots)) + ell - 1}")
+    print("Maximum robot/goal distance (ell):", ell)    
+    print(f"Theoretical upper bound (min(n, V - n) + ell - 1): {min(len(M.robots), M.G.number_of_nodes() - len(M.robots)) + ell - 1}")
 
+    print(Back.BLUE + Fore.WHITE + "Use n and m keys to navigate the solution." + Style.RESET_ALL)
     show_visualization()
     
+def read_instance(filename):
+    with open(f'instances/{filename}') as f:
+        n, m, k = map(int, f.readline().split())
+        robots = list(map(int, f.readline().split()))
+        targets = list(map(int, f.readline().split()))
+        edges = []
+        for _ in range(m):
+            a, b = map(int, f.readline().split())
+            edges.append((a, b))
+    return MAPF(n, edges, robots, targets)
 
-M = MAPF(n, edges, robots, targets)
-algorithm = "push" if len(sys.argv) <= 2 else sys.argv[2]
-if algorithm == "push":
-    instructions = push_algorithm(M)
-elif algorithm == "push_opt":
-    instructions = push_opt_algorithm(M)
-print("Solution calculation finished, starting analysis of solution")
+
+options = sys.argv[1:-1]
+graph = sys.argv[-1]
+M = read_instance(graph)
+if "--novis" in options:
+    SHOW_VISUALIZATION = False
+if "--numbered" in options:
+    NODES_NUMBERED = True
+instructions = push_algorithm(M)
+print("Solution calculation finished, starting analysis of solution.")
 analyze_solution(M, instructions)
