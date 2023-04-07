@@ -1,5 +1,5 @@
 from collections import deque
-def closest_pair(M, R, F, g):
+def closest_robot(M, R, F, g):
     q = deque([g])
     distance = [1e8 for _ in range(M.G.number_of_nodes() + 1)]
     previous = [v for v in range(M.G.number_of_nodes() + 1)]
@@ -30,7 +30,7 @@ def push_algorithm(M):
     S = []
     while len(R) > 0:
         g = next(iter(T))
-        r, p = closest_pair(M, R, F, g)
+        r, p = closest_robot(M, R, F, g)
         t = i
         for j in range(len(p) - 1):
             S.append((t, p[j], p[j+1]))
