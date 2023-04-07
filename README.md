@@ -17,6 +17,11 @@ Navigate to the directory you created during the installation called `push_algor
 
 ```python3 sim.py gen_1.txt```
 
+A window should pop up which looks like this:
+![image](https://user-images.githubusercontent.com/37704951/230690053-7cde3cd9-02a1-495d-87a4-00110a51c729.png)
+
+You can now use the `n` and `m` keys to navigate the solution over time.
+
 ## Instance files
 Instance files are in the `instances` directory, and are of the following format:
 
