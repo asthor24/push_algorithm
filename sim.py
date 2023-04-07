@@ -4,14 +4,14 @@ import numpy
 import sys
 from collections import deque
 from colorama import init, Fore, Back, Style
-from push import push_algorithm_recursive
+from push import push_algorithm
 init()
 numpy.random.seed(4812)
 sys.setrecursionlimit(100000)
 
 vis_states = []
 vis_idx = 0
-SHOW_VISUALIZATION = False
+SHOW_VISUALIZATION = True
 
 def visualize_state(M, moves=None): # G is a "Graph" instance
     node_colors = ['#aaa'] * M.G.number_of_nodes()
@@ -99,15 +99,6 @@ with open(f'graphs/{sys.argv[1]}.txt') as f:
 # - rewrite the simulator so that it just takes in the (t, u, v) type instructions and generates the simulation
 #   - if there is some error, then it reports it, but shows the simulation until the error happens
 # - rewrite push algorithm to output these types of instructions
-
-
-# PUSH ALGORITHM STARTS
-def push_algorithm(M):
-    F = set([r for r in M.robots if r in M.targets])
-    R = set([r for r in M.robots if r not in F])
-    T = set([t for t in M.targets if t not in F])
-    return push_algorithm_recursive(M, R, T, F, 0)
-# PUSH ALGORITHM ENDS
 
 # PUSH_OPT ALGORITHM STARTS
 

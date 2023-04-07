@@ -1,21 +1,19 @@
 from collections import deque
-def closest_pair(M, robots, targets, zero_nodes):
-    q = deque(robots)
+def closest_pair(M, R, F, g):
+    q = deque([g])
     distance = [1e8 for _ in range(M.G.number_of_nodes() + 1)]
     previous = [v for v in range(M.G.number_of_nodes() + 1)]
-    for r in robots:
-        distance[r] = 0
+    distance[g] = 0
     while len(q) > 0:
         cur = q.popleft()
-        if cur in targets:
+        if cur in R:
             path = [cur]
             while previous[cur] != cur:
                 path.append(previous[cur])
                 cur = previous[cur]
-            path = list(reversed(path))
-            return (path[0], path[-1], path)
+            return (path[0], path)
         for neighbor in M.G.neighbors(cur):
-            w = 0 if neighbor in zero_nodes else 1
+            w = 0 if neighbor in F else 1
             if distance[cur] + w < distance[neighbor]:
                 distance[neighbor] = distance[cur] + w
                 previous[neighbor] = cur
@@ -24,17 +22,22 @@ def closest_pair(M, robots, targets, zero_nodes):
                 else:
                     q.appendleft(neighbor)
 
-def push_algorithm_recursive(M, R, T, F, t):
-    if len(R) == 0:
-        return []
-    r, g, p = closest_pair(M, R, T, F)
-    t_plan = t
-    result = []
-    for i in range(len(p) - 1):
-        result.append((t_plan, p[i], p[i+1]))
-        if p[i+1] not in F:
-            t_plan += 1
-    R.remove(r)
-    T.remove(g)
-    F.add(g)
-    return result + push_algorithm_recursive(M, R, T, F, t + 1)
+def push_algorithm(M):
+    R = set([r for r in M.robots if r not in M.targets])
+    T = set([t for t in M.targets if t not in M.robots])
+    F = set([t for t in M.targets if t in M.robots])
+    i = 0
+    S = []
+    while len(R) > 0:
+        g = next(iter(T))
+        r, p = closest_pair(M, R, F, g)
+        t = i
+        for j in range(len(p) - 1):
+            S.append((t, p[j], p[j+1]))
+            if p[j+1] not in F:
+                t += 1
+        R.remove(r)
+        T.remove(g)
+        F.add(g)
+        i += 1
+    return S
