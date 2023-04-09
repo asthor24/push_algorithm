@@ -13,7 +13,7 @@ Navigate to the directory you created during the installation called `push_algor
 
 ```python3 sim.py [--novis] [--numbered] [INSTANCE_FILE]```
 
-[INSTANCE_FILE] is a path to the file describing the instance we want the algorithm to run on, as described below. [--novis] is a flag which indicates that the simulator should not visualize the solution, but it will still report relevant statistics about the solution. [--numbered] is a flag which indicates whether the visualizer should label the vertices with the numbers they are given in the instance file. For an example of the visualization run the following:
+[INSTANCE_FILE] is the name of the file (in the `instances` folder) describing the instance we want the algorithm to run on, as described below. [--novis] is a flag which indicates that the simulator should not visualize the solution, but it will still report relevant statistics about the solution. [--numbered] is a flag which indicates whether the visualizer should label the vertices with the numbers they are given in the instance file. For an example of the visualization run the following:
 
 ```python3 sim.py gen_1.txt```
 
