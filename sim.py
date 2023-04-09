@@ -1,13 +1,11 @@
 import networkx as nx
 import matplotlib.pyplot as plt
-import numpy
 import sys
-from collections import deque
 from colorama import init, Fore, Back, Style
 from collections import deque
 from push import push_algorithm
+from push_opt import push_opt_algorithm
 init()
-numpy.random.seed(4812)
 sys.setrecursionlimit(100000)
 
 vis_states = []
@@ -175,12 +173,17 @@ def read_instance(filename):
 
 
 options = sys.argv[1:-1]
-graph = sys.argv[-1]
-M = read_instance(graph)
-if "--novis" in options:
+if "--novis" in options or "--compare-optimized" in options:
     SHOW_VISUALIZATION = False
 if "--numbered" in options:
     NODES_NUMBERED = True
+graph = sys.argv[-1]
+M = read_instance(graph)
+
 instructions = push_algorithm(M)
 print("Solution calculation finished, starting analysis of solution.")
 analyze_solution(M, instructions)
+if "--compare-optimized" in options:
+    instructions = push_opt_algorithm(M)
+    print("Solution calculation finished, starting analysis of solution.")
+    analyze_solution(M, instructions)
