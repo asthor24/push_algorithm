@@ -1,34 +1,73 @@
 import networkx as nx
 import matplotlib.pyplot as plt
-import numpy
 import sys
-from collections import deque
 from colorama import init, Fore, Back, Style
 from collections import deque
 from push import push_algorithm
+from push_extra_info import push_algorithm_extra_info
+from push_opt import push_opt_algorithm
+from push_opt_extra_info import push_opt_algorithm_extra_info
 init()
-numpy.random.seed(4812)
 sys.setrecursionlimit(100000)
 
 vis_states = []
 vis_idx = 0
+paths_global = []
 SHOW_VISUALIZATION = True
 NODES_NUMBERED = False
+ARROW_THICKNESS=4
+NEWLY_FOUND_PATH_THICKNESS=4
+OLD_PATH_THICKNESS=2
 
-def visualize_state(M, moves=None): # G is a "Graph" instance
+VISUALIZE_PATHS = True
+ROBOT_COLOR = '#FFC93C'
+GOAL_COLOR ='#f54029'
+FINISHED_COLOR = '#03C988'
+PATH_COLOR =  '#0081C9'
+
+
+
+def visualize_state(M, moves=None, show_new_path=False, highlight_new_path=False): # G is a "Graph" instance
+    edges = {e:{'color':'k', 'width':1, 'arrow':False} for e in list(M.G.edges())}
+    
     node_colors = ['#aaa'] * M.G.number_of_nodes()
-    edge_colors = ['k'] * M.G.number_of_edges()
+    if VISUALIZE_PATHS:
+        for i in range(len(paths)):
+            #print(i)
+            pathstarts = paths[i][0][1]
+            if pathstarts > M.t: # path starts later
+                continue
+            if M.t - pathstarts >= len(paths[i]): # path is already finished
+                continue 
+            nodes, _ = paths[i][M.t-pathstarts]
+            for j in range(len(nodes) - 2, -1, -1):
+                a, b = nodes[j], nodes[j+1]
+                if (a,b) not in edges.keys(): # orient the edge
+                    edges[(a,b)] = edges[(b,a)].copy()
+                    edges.pop((b,a))
+                if pathstarts == M.t and not show_new_path:
+                    continue
+                edges[(a,b)]['color'] = PATH_COLOR
+                edges[(a,b)]['arrow'] = True
+                if pathstarts == M.t and highlight_new_path:
+                    edges[(a,b)]['width'] = NEWLY_FOUND_PATH_THICKNESS
+                else:
+                    edges[(a,b)]['width'] = max(edges[(a,b)]['width'], OLD_PATH_THICKNESS)
+                
+                    
     if moves is not None:
-        edges = list(M.G.edges())
-        for i in range(len(edges)):
-            a, b = edges[i]
-            if (a, b) in moves or (b, a) in moves:
-                edge_colors[i] = '#FFC93C'
+        for a,b in moves:
+            if (a,b) not in edges.keys(): # orient the edge
+                edges[(a,b)] = edges[(b,a)]
+                edges.pop((b,a))
+            edges[(a,b)]['color'] = ROBOT_COLOR
+            edges[(a,b)]['arrow'] = True
+    
     for r in M.robots_vis:
-        node_colors[r - 1] = '#FFC93C'
+        node_colors[r - 1] = ROBOT_COLOR
     for t in M.targets_vis:
-        node_colors[t - 1] = '#03C988' if node_colors[t - 1] == '#FFC93C' else '#0081C9'
-    vis_states.append((M.G, M.vis_pos, node_colors, edge_colors))
+        node_colors[t - 1] = FINISHED_COLOR if node_colors[t - 1] == ROBOT_COLOR else GOAL_COLOR
+    vis_states.append((M.G, M.vis_pos, node_colors, edges))
 
 def onkeypress(event):
     global vis_states, vis_idx
@@ -40,21 +79,41 @@ def onkeypress(event):
         vis_idx = (vis_idx - 1 + len(vis_states)) % len(vis_states)
 
     if event.key == 'n' or event.key == 'm':
-        G, pos, node_color, edge_color = vis_states[vis_idx]
-        nx.draw_networkx(G, pos = pos, node_color = node_color, edge_color = edge_color, with_labels=NODES_NUMBERED)
+        draw_state()
         event.canvas.draw()
 
+def draw_state():
+    global vis_idx
+    G, pos, node_color, edges = vis_states[vis_idx]
+    nx.draw_networkx_nodes(G, pos = pos, node_color = node_color)
+    
+    for arrow in range(2):
+        endpoints = []
+        colors = []
+        widths = []
+        for e, style in edges.items():
+            if style['arrow'] == arrow:
+                endpoints.append(e)
+                colors.append(style['color'])
+                widths.append(style['width'])
+        if arrow == 0:
+            nx.draw_networkx_edges(G, pos = pos, edgelist=endpoints, edge_color=colors, width=widths)
+        else:
+            nx.draw_networkx_edges(G, pos = pos, edgelist=endpoints, width=widths, edge_color=colors, arrows=True, arrowstyle='-|>')
+    
+    if NODES_NUMBERED:
+        nx.draw_networkx_labels(G, pos = pos)
+    
 def show_visualization(start_showing_from = 0):
     if len(vis_states) == 0:
         return
-    G, pos, node_color, edge_color = vis_states[start_showing_from]
     global vis_idx
     vis_idx = start_showing_from
     
     fig = plt.figure()
     fig.canvas.mpl_connect('key_release_event', onkeypress)
-    nx.draw_networkx(G, pos = pos, node_color = node_color, edge_color = edge_color, with_labels=NODES_NUMBERED)
-    plt.show()    
+    draw_state()
+    plt.show()
 
 class MAPF:
     def __init__(self, n_vertices, edge_list, robots, targets):
@@ -67,6 +126,7 @@ class MAPF:
         self.targets = targets
         self.robots_vis = self.robots.copy()
         self.targets_vis = self.targets.copy()
+        self.t = 0
 
     def make_moves(self, moves): 
         for move in moves:
@@ -132,14 +192,21 @@ def analyze_solution(M, instructions):
     print(Style.RESET_ALL)
 
     if SHOW_VISUALIZATION:
+        M.t = -1
         visualize_state(M)
+        M.t = 0
         for t in range(makespan):
-            visualize_state(M, moves = moves[t])
-            try:
-                M.make_moves(moves[t])
-                visualize_state(M)
-            except:
-                break
+            if VISUALIZE_PATHS and M.t <= paths[-1][0][1]:
+                visualize_state(M, show_new_path=True, highlight_new_path=True)
+                visualize_state(M, show_new_path=True)
+            visualize_state(M, show_new_path=True, moves = moves[t])
+            #try:
+            M.make_moves(moves[t])
+            M.t+=1
+            visualize_state(M)
+
+            #except:
+            #    break
 
     ell = 0
     for r in M.robots:
@@ -175,12 +242,27 @@ def read_instance(filename):
 
 
 options = sys.argv[1:-1]
-graph = sys.argv[-1]
-M = read_instance(graph)
-if "--novis" in options:
+if "--novis" in options or "--compare-optimized" in options:
     SHOW_VISUALIZATION = False
+if "--no-paths" in options:
+    VISUALIZE_PATHS = False
+
+algo = None
+if "--improved" in options:
+    algo = push_opt_algorithm_extra_info
+else:
+    algo = push_algorithm_extra_info
+
 if "--numbered" in options:
     NODES_NUMBERED = True
-instructions = push_algorithm(M)
+graph = sys.argv[-1]
+M = read_instance(graph)
+
+instructions, paths = algo(M)
+paths_global = paths.copy()
 print("Solution calculation finished, starting analysis of solution.")
 analyze_solution(M, instructions)
+if "--compare-optimized" in options:
+    instructions = push_opt_algorithm(M)
+    print("Solution calculation finished, starting analysis of solution.")
+    analyze_solution(M, instructions)
