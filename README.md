@@ -15,7 +15,7 @@ To visualize a solution found by the push algorithm, navigate to the directory y
 
 ```python3 sim.py [--novis] [--numbered] [--improved] [INSTANCE_FILE]```
 
-[INSTANCE_FILE] is the name of the file (in the `instances` folder) describing the instance we want the algorithm to run on, as described below. [--novis] is a flag which indicates that the simulator should not visualize the solution, but it will still report relevant statistics about the solution. [--numbered] is a flag which indicates whether the visualizer should label the vertices with the numbers they are given in the instance file. [--improved] gives the solution found by a slightly modified version of the algorithm, which finds much better solutions. For an example of the visualization run the following:
+[INSTANCE_FILE] is the name of the file (in the `instances` folder) describing the instance we want the algorithm to run on, as described below. [--novis] is a flag which indicates that the simulator should not visualize the solution, but it will still report relevant statistics about the solution. [--numbered] is a flag which indicates whether the visualizer should label the vertices with the numbers they are given in the instance file. [--improved] gives the solution found by a slightly modified version of the algorithm, which usually finds much better solutions while maintaining the same worst-case guarantee. For an example of the visualization run the following:
 
 ```python3 sim.py gen_1.txt```
 
