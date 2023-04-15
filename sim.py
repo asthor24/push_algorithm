@@ -33,8 +33,6 @@ def visualize_state(M, moves=None, show_new_path=False, highlight_new_path=False
     node_colors = ['#aaa'] * M.G.number_of_nodes()
     if VISUALIZE_PATHS:
         for i in range(len(paths)):
-            #print(i)
-            print(paths[i])
             pathstarts = paths[i][0][1]
             if pathstarts > M.t: # path starts later
                 continue
@@ -262,7 +260,7 @@ M = read_instance(graph)
 
 instructions, paths = algo(M)
 paths_global = paths.copy()
-print("Solution calculation finished, starting analysis of solution.")
+print(Back.GREEN + Fore.BLACK + "Solution calculation finished, starting analysis of solution." + Style.RESET_ALL)
 analyze_solution(M, instructions)
 if "--compare-optimized" in options:
     instructions = push_opt_algorithm(M)
