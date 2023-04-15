@@ -34,19 +34,21 @@ def visualize_state(M, moves=None, show_new_path=False, highlight_new_path=False
     if VISUALIZE_PATHS:
         for i in range(len(paths)):
             #print(i)
+            print(paths[i])
             pathstarts = paths[i][0][1]
             if pathstarts > M.t: # path starts later
                 continue
             if M.t - pathstarts >= len(paths[i]): # path is already finished
-                continue 
+                continue             
+            if pathstarts == M.t and not show_new_path:
+                continue
+            
             nodes, _ = paths[i][M.t-pathstarts]
             for j in range(len(nodes) - 2, -1, -1):
                 a, b = nodes[j], nodes[j+1]
                 if (a,b) not in edges.keys(): # orient the edge
                     edges[(a,b)] = edges[(b,a)].copy()
                     edges.pop((b,a))
-                if pathstarts == M.t and not show_new_path:
-                    continue
                 edges[(a,b)]['color'] = PATH_COLOR
                 edges[(a,b)]['arrow'] = True
                 if pathstarts == M.t and highlight_new_path:
