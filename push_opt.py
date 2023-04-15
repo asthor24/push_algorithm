@@ -48,6 +48,7 @@ def push_opt_algorithm(M):
         while len(R) > 0:
             r, p, dist = closest_pair(M, R, T, F, ignore_nodes)
             if r == -1:
+                i += 1
                 break
             if dist[r] > goal_distance:
                 if nodes_with_goal_distance > len(goals_added):
