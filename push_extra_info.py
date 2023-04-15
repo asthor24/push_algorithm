@@ -38,7 +38,7 @@ def push_algorithm_extra_info(M):
             S.append((t, p[j], p[j+1]))
             if p[j+1] not in F:
                 t += 1
-                paths[-1].append((p[(j + 1):t],t))
+                paths[-1].append((p[(j + 1):],t))
         R.remove(r)
         
         T.remove(g)
