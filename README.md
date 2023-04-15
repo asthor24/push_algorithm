@@ -8,6 +8,8 @@ git clone https://github.com/asthor24/push_algorithm/
 pip3 install networkx matplotlib colorama scipy
 ```
 
+This may take a few minutes.
+
 ## Usage
 Navigate to the directory you created during the installation called `push_algorithm` and run the following command:
 
