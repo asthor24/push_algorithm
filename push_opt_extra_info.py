@@ -26,15 +26,13 @@ def closest_pair(M, R, T, F, taken_nodes):
                     q.appendleft(neighbor)
     return (-1,-1,-1)
 
-def push_opt_algorithm(M):
+def push_opt_algorithm_extra_info(M):
     R = set([r for r in M.robots if r not in M.targets])
     T = set([t for t in M.targets if t not in M.robots])
     F = set([t for t in M.targets if t in M.robots])
     i = 0
     S = []
-    #r,p,distx = closest_pair(M,R,T,F,set())
-    #last_path_found = distx[r]
-    
+    paths = []
     while len(R) > 0:
         r,p,dist_initial = closest_pair(M,R,T,F,set())
         goal_distance = dist_initial[r]
@@ -42,7 +40,6 @@ def push_opt_algorithm(M):
         for r in R:
             if dist_initial[r] == goal_distance:
                 nodes_with_goal_distance += 1
-        
         ignore_nodes = set()
         goals_added = []
         while len(R) > 0:
@@ -59,16 +56,18 @@ def push_opt_algorithm(M):
                         F.add(g)
                     goals_added = []
                     break
+            paths.append([(p,i)])
             t = i
             for j in range(len(p) - 1):
                 S.append((t, p[j], p[j+1]))
                 ignore_nodes.add(p[j+1])
                 if p[j+1] not in F:
                     t += 1
-            
+                    paths[-1].append((p[(j+1):],t))
+                    
             R.remove(r)
             T.remove(p[-1])
             goals_added.append(p[-1])
         for g in goals_added:
             F.add(g)
-    return S
+    return S, paths
